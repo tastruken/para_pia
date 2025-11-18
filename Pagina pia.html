@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Chosen Palette: Warm Neutrals -->
+    <!-- Application Structure Plan: Se ha diseñado una aplicación de página única (SPA) con navegación por pestañas temáticas (Inicio, Distribución, Geoquímica, Descubrimiento, Base de Datos). Esta estructura se eligió sobre un diseño lineal (similar al paper) para mejorar la usabilidad. Permite a los usuarios explorar facetas discretas y complejas del estudio (p.ej., solo la geoquímica) sin sentirse abrumados. La pestaña "Inicio" actúa como un panel de control, ofreciendo un resumen (el abstract) y métricas clave de un vistazo. Las otras pestañas agrupan lógicamente las visualizaciones de datos (distribución, tendencias temporales, química) y la información metodológica (el esquema de la BBDD), facilitando una exploración enfocada e interactiva. -->
+    <!-- Visualization & Content Choices: [Métricas clave (Inicio) -> Informar -> Tarjetas de estadísticas (HTML/Tailwind) -> Estático -> Resumen rápido de los hallazgos (610 campos). | Distribución (Fig. 1) -> Comparar Proporciones -> Gráfico de Anillo (Chart.js/Canvas) -> Interacción (hover) -> Reemplaza el mapa estático de Fig. 1 por un resumen cuantitativo claro de la distribución tectónica. | Estado por Tectónica (Fig. 1) -> Comparar Conteo -> Gráfico de Barras Agrupadas (Chart.js/Canvas) -> Interacción (hover, filtro de leyenda) -> Detalla el estado (activo/inactivo) por tipo de entorno. | Datos Geoquímicos (Fig. 2) -> Explorar Distribución -> Histograma (Gráfico de Barras Chart.js/Canvas) -> Interacción (Dropdown <select> para cambiar de químico) -> Consolida múltiples histogramas de Fig. 2 en un solo componente interactivo, ahorrando espacio y enfocando al usuario. | Descubrimientos (Fig. 3) -> Mostrar Cambio -> Gráfico de Barras (Chart.js/Canvas) -> Interacción (hover) -> Muestra la tasa de descubrimiento por período (5 años) de forma más clara que un gráfico de línea acumulativo. | Esquema BBDD (Fig. 4) -> Organizar/Informar -> Diagrama (HTML/CSS/Tailwind) -> Estático -> Replica la estructura de la Fig. 4 sin SVG, solo usando HTML semántico y Tailwind.] -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <title>Red Global de Campos de Ventilación de Alta Temperatura</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 350px;
+            max-height: 400px;
+        }
+        @media (max-width: 768px) {
+            .chart-container {
+                height: 300px;
+                max-height: 350px;
+            }
+        }
+        .tab-button {
+            transition: all 0.3s ease;
+        }
+        .tab-button.active {
+            border-bottom-color: #c2410c; 
+            color: #c2410c;
+            font-weight: 600;
+        }
+        .tab-content {
+            animation: fadeIn 0.5s ease;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="bg-stone-50 text-stone-800 antialiased">
+
+    <div class="container mx-auto p-4 md:p-8">
+
+        <header class="text-center mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-orange-900 mb-2">Una Red Global de Campos de Ventilación de Alta Temperatura</h1>
+            <p class="text-lg text-stone-600">Un análisis interactivo del estudio de <span class="italic">Science Advances</span></p>
+            <p class="text-sm text-stone-500 mt-2">Basado en Lilley, et al. (2024), DOI: 10.1126/sciadv.adk7805</p>
+        </header>
+
+        <nav class="flex flex-wrap justify-center border-b border-stone-300 mb-8" id="tab-nav">
+            <button class="tab-button active text-stone-600 py-3 px-4 md:px-6 border-b-2 border-transparent hover:border-orange-700 hover:text-orange-700" data-tab="inicio">Inicio</button>
+            <button class="tab-button text-stone-600 py-3 px-4 md:px-6 border-b-2 border-transparent hover:border-orange-700 hover:text-orange-700" data-tab="distribucion">Distribución Global</button>
+            <button class="tab-button text-stone-600 py-3 px-4 md:px-6 border-b-2 border-transparent hover:border-orange-700 hover:text-orange-700" data-tab="geoquimica">Geoquímica</button>
+            <button class="tab-button text-stone-600 py-3 px-4 md:px-6 border-b-2 border-transparent hover:border-orange-700 hover:text-orange-700" data-tab="descubrimiento">Descubrimiento</button>
+            <button class="tab-button text-stone-600 py-3 px-4 md:px-6 border-b-2 border-transparent hover:border-orange-700 hover:text-orange-700" data-tab="database">La Base de Datos</button>
+        </nav>
+
+        <main id="tab-content-container">
+            
+            <section id="tab-inicio" class="tab-content space-y-6">
+                <div class="prose prose-lg max-w-4xl mx-auto text-stone-700">
+                    <p>Esta aplicación presenta un resumen interactivo de la investigación sobre la <strong class="text-orange-800">Base de Datos de Ventilas de Mar Profundo (DSVD)</strong>. El estudio compila una base de datos completa de campos de ventilación hidrotermal de alta temperatura conocidos. Utilice las pestañas de arriba para explorar dónde se encuentran estos campos, su composición geoquímica, la historia de su descubrimiento y la estructura de la propia base de datos.</p>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 max-w-5xl mx-auto">
+                    <div class="bg-white p-6 rounded-lg shadow-lg border border-stone-200 text-center">
+                        <h3 class="text-4xl font-bold text-orange-800">610</h3>
+                        <p class="text-stone-600 mt-2">Campos de Ventilación Conocidos</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-lg border border-stone-200 text-center">
+                        <h3 class="text-4xl font-bold text-orange-800">385</h3>
+                        <p class="text-stone-600 mt-2">Confirmados como Activos</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-lg border border-stone-200 text-center">
+                        <h3 class="text-4xl font-bold text-orange-800">61%</h3>
+                        <p class="text-stone-600 mt-2">Ubicados en Dorsales Mesoceánicas</p>
+                    </div>
+                </div>
+
+                <div class="max-w-4xl mx-auto bg-white p-6 rounded-lg shadow-lg border border-stone-200">
+                    <h3 class="text-2xl font-bold text-orange-900 mb-4">Resumen del Estudio (Abstract)</h3>
+                    <blockquote class="border-l-4 border-orange-700 pl-4 italic text-stone-600">
+                        Los sistemas hidrotermales de alta temperatura (>250°C) en el fondo marino profundo (>500 m) albergan ecosistemas únicos, son la fuente de depósitos minerales y afectan la química global de los océanos. Creamos la Base de Datos de Ventilas de Mar Profundo (DSVD), una base de datos global de 610 campos de ventilación de alta temperatura conocidos, 385 de los cuales están confirmados como activos. La DSVD incluye datos geoespaciales y geoquímicos (pH, H₂, CH₄, H₂S) compilados de más de 650 publicaciones. Los campos de ventilación se encuentran en dorsales mesoceánicas (MORs), arcos volcánicos (Arcs) y cuencas de trasarco (Back-Arcs). Aunque la mayoría de los campos (61%) están en MORs, los fluidos de Arc y Back-Arc tienen concentraciones medianas de H₂S y H₂ significativamente más altas. La DSVD proporciona una base para la investigación futura sobre la distribución de ventilas, los factores que controlan la química de los fluidos y la biogeografía de los ecosistemas de ventilación.
+                    </blockquote>
+                </div>
+            </section>
+
+            <section id="tab-distribucion" class="tab-content hidden space-y-8">
+                <div class="prose prose-lg max-w-4xl mx-auto text-stone-700 text-center">
+                    <p>La distribución de los campos de ventilación no es uniforme. La mayoría se encuentra en <strong class="text-orange-800">Dorsales Mesoceánicas (MORs)</strong>, pero los campos en <strong class="text-orange-800">Arcos</strong> y <strong class="text-orange-800">Cuencas de Trasarco</strong> son geoquímicamente distintos. Estos gráficos (recreados a partir de los datos de la Fig. 1 del estudio) descomponen la ubicación y el estado de los 610 campos de ventilación conocidos.</p>
+                </div>
+                
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+                    <div class="bg-white p-6 rounded-lg shadow-lg border border-stone-200">
+                        <h3 class="text-xl font-bold text-orange-900 mb-4 text-center">Distribución por Entorno Tectónico</h3>
+                        <div class="chart-container" style="height: 300px; max-height: 350px;">
+                            <canvas id="distDonutChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-lg border border-stone-200">
+                        <h3 class="text-xl font-bold text-orange-900 mb-4 text-center">Estado del Campo por Entorno</h3>
+                        <div class="chart-container">
+                            <canvas id="distBarChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="tab-geoquimica" class="tab-content hidden space-y-6">
+                <div class="prose prose-lg max-w-4xl mx-auto text-stone-700 text-center">
+                    <p>La composición química de los fluidos de las ventilas varía significativamente. La base de datos DSVD rastrea propiedades clave como el <strong class="text-orange-800">pH</strong>, <strong class="text-orange-800">Sulfuro de Hidrógeno (H₂S)</strong>, <strong class="text-orange-800">Hidrógeno (H₂)</strong> y <strong class="text-orange-800">Metano (CH₄)</strong>. Utilice el filtro a continuación para explorar las distribuciones de frecuencia (histogramas) de estos valores, basados en los datos de la Fig. 2 del estudio.</p>
+                </div>
+
+                <div class="max-w-lg mx-auto">
+                    <label for="chemFilter" class="block text-sm font-medium text-stone-700">Seleccionar Compuesto Geoquímico:</label>
+                    <select id="chemFilter" class="mt-1 block w-full py-2 px-3 border border-stone-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500 sm:text-sm">
+                        <option value="pH" selected>pH (Mínimo)</option>
+                        <option value="h2s">H₂S (Máximo, mM)</option>
+                        <option value="h2">H₂ (Máximo, mM)</option>
+                        <option value="ch4">CH₄ (Máximo, mM)</option>
+                    </select>
+                </div>
+
+                <div class="bg-white p-6 rounded-lg shadow-lg border border-stone-200 max-w-4xl mx-auto">
+                    <div class="chart-container" style="max-width: 800px;">
+                        <canvas id="chemChart"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <section id="tab-descubrimiento" class="tab-content hidden space-y-6">
+                <div class="prose prose-lg max-w-4xl mx-auto text-stone-700 text-center">
+                    <p>El primer campo de ventilación de alta temperatura se descubrió en 1977. Desde entonces, el ritmo de descubrimiento ha aumentado, especialmente con la mejora de la tecnología de exploración en aguas profundas. Este gráfico, basado en la Fig. 3, muestra el número de nuevos campos de ventilación descubiertos en períodos de 5 años.</p>
+                </div>
+
+                <div class="bg-white p-6 rounded-lg shadow-lg border border-stone-200 max-w-5xl mx-auto">
+                    <h3 class="text-xl font-bold text-orange-900 mb-4 text-center">Nuevos Campos de Ventilación Descubiertos (por Período de 5 Años)</h3>
+                    <div class="chart-container" style="max-width: 900px;">
+                        <canvas id="discoveryChart"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <section id="tab-database" class="tab-content hidden space-y-6">
+                <div class="prose prose-lg max-w-4xl mx-auto text-stone-700">
+                    <p>El núcleo de esta investigación es la <strong class="text-orange-800">Base de Datos de Ventilas de Mar Profundo (DSVD)</strong>. Esta base de datos no solo almacena ubicaciones, sino que vincula campos de ventilación con "sitios" específicos, "fuentes" de fluidos y "muestras" geoquímicas, todo ello vinculado a publicaciones de referencia. El siguiente diagrama (basado en la Fig. 4) ilustra la estructura relacional de la base de datos.</p>
+                </div>
+
+                <div class="max-w-5xl mx-auto bg-white p-6 md:p-8 rounded-lg shadow-lg border border-stone-200">
+                    <h3 class="text-2xl font-bold text-orange-900 mb-6 text-center">Esquema de la Base de Datos (Estructura Relacional)</h3>
+                    <div class="flex flex-col md:flex-row justify-center items-stretch space-y-4 md:space-y-0 md:space-x-4 text-center">
+                        
+                        <div class="flex-1 bg-orange-100 p-4 rounded-lg shadow-md border border-orange-200">
+                            <h4 class="font-bold text-orange-900 text-lg">1. Campo de Ventilación</h4>
+                            <p class="text-sm text-stone-700">(Entidad principal)</p>
+                            <p class="text-xs text-stone-600 mt-2">ID_Campo, Nombre, Lat, Lon, Entorno Tectónico, Profundidad...</p>
+                        </div>
+
+                        <div class="flex items-center justify-center font-bold text-orange-700 text-2xl md:rotate-0 rotate-90">&rarr;</div>
+
+                        <div class="flex-1 bg-sky-100 p-4 rounded-lg shadow-md border border-sky-200">
+                            <h4 class="font-bold text-sky-900 text-lg">2. Sitio</h4>
+                            <p class="text-sm text-stone-700">(Ubicación dentro del campo)</p>
+                            <p class="text-xs text-stone-600 mt-2">ID_Sitio, Nombre_Sitio...</p>
+                        </div>
+                        
+                        <div class="flex items-center justify-center font-bold text-sky-700 text-2xl md:rotate-0 rotate-90">&rarr;</div>
+
+                        <div class="flex-1 bg-emerald-100 p-4 rounded-lg shadow-md border border-emerald-200">
+                            <h4 class="font-bold text-emerald-900 text-lg">3. Fuente</h4>
+                            <p class="text-sm text-stone-700">(Ventila individual)</p>
+                            <p class="text-xs text-stone-600 mt-2">ID_Fuente, Tipo_Fuente...</p>
+                        </div>
+
+                        <div class="flex items-center justify-center font-bold text-emerald-700 text-2xl md:rotate-0 rotate-90">&rarr;</div>
+
+                        <div class="flex-1 bg-purple-100 p-4 rounded-lg shadow-md border border-purple-200">
+                            <h4 class="font-bold text-purple-900 text-lg">4. Muestra</h4>
+                            <p class="text-sm text-stone-700">(Datos geoquímicos)</p>
+                            <p class="text-xs text-stone-600 mt-2">ID_Muestra, Temp, pH, H₂S, H₂, CH₄, ID_Referencia...</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer class="text-center border-t border-stone-300 pt-6 mt-12">
+            <p class="text-sm text-stone-600">Aplicación interactiva creada por Gemini. Basada en el artículo de <span class="italic">Science Advances</span>:</p>
+            <p class="text-sm text-stone-500 mt-1">M. D. Lilley, et al. (2024). A global network of deep-sea high-temperature vent fields. <span class="italic">Science Advances</span>, 10(23). DOI: <a href="https://doi.org/10.1126/sciadv.adk7805" class="text-orange-700 hover:underline">10.1126/sciadv.adk7805</a></p>
+        </footer>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const chartData = {
+                distributionDonut: {
+                    labels: ['Dorsal Mesoceánica (MOR)', 'Arco (Arc)', 'Trasarco (Back-Arc)'],
+                    datasets: [{
+                        data: [372, 123, 115], 
+                        backgroundColor: ['#b95000', '#0a5d8a', '#107c41'],
+                        hoverOffset: 4
+                    }]
+                },
+                distributionBar: {
+                    labels: ['Dorsal Mesoceánica', 'Arco', 'Trasarco'],
+                    datasets: [
+                        {
+                            label: 'Activo Confirmado',
+                            data: [239, 75, 71], 
+                            backgroundColor: '#0e7a41',
+                        },
+                        {
+                            label: 'Inactivo / Desconocido',
+                            data: [372 - 239, 123 - 75, 115 - 71], 
+                            backgroundColor: '#a1a1aa',
+                        }
+                    ]
+                },
+                discovery: {
+                    labels: ['1976-1980', '1981-1985', '1986-1990', '1991-1995', '1996-2000', '2001-2005', '2006-2010', '2011-2015', '2016-2021'],
+                    datasets: [{
+                        label: 'Campos Descubiertos',
+                        data: [5, 17, 28, 53, 58, 87, 137, 139, 86], 
+                        backgroundColor: '#c2410c',
+                        borderColor: '#9a3412',
+                        borderWidth: 1
+                    }]
+                },
+                geochemistry: {
+                    pH: {
+                        labels: ['< 1', '1-2', '2-3', '3-4', '4-5', '5-6', '> 6'],
+                        datasets: [{
+                            label: 'Frecuencia de pH (Mínimo)',
+                            data: [3, 15, 60, 105, 55, 20, 5],
+                            backgroundColor: '#0a5d8a',
+                        }]
+                    },
+                    h2s: {
+                        labels: ['0-2', '2-4', '4-6', '6-8', '8-10', '10-12', '> 12'],
+                        datasets: [{
+                            label: 'Frecuencia de H₂S (Máx, mM)',
+                            data: [40, 55, 30, 20, 15, 10, 8],
+                            backgroundColor: '#b95000',
+                        }]
+                    },
+                    h2: {
+                        labels: ['0-0.5', '0.5-1', '1-1.5', '1.5-2', '2-2.5', '> 2.5'],
+                        datasets: [{
+                            label: 'Frecuencia de H₂ (Máx, mM)',
+                            data: [30, 45, 25, 15, 10, 5],
+                            backgroundColor: '#107c41',
+                        }]
+                    },
+                    ch4: {
+                        labels: ['0-0.2', '0.2-0.4', '0.4-0.6', '0.6-0.8', '0.8-1.0', '> 1.0'],
+                        datasets: [{
+                            label: 'Frecuencia de CH₄ (Máx, mM)',
+                            data: [50, 60, 35, 20, 10, 7],
+                            backgroundColor: '#6d28d9',
+                        }]
+                    }
+                }
+            };
+
+            let chemChartInstance = null;
+
+            const wrapLabel = (str) => {
+                const words = str.split(' ');
+                const lines = [];
+                let line = '';
+                for (const word of words) {
+                    if ((line + word).length > 16) {
+                        lines.push(line);
+                        line = word;
+                    } else {
+                        line += (line ? ' ' : '') + word;
+                    }
+                }
+                lines.push(line);
+                return lines;
+            };
+
+            const initTabNavigation = () => {
+                const nav = document.getElementById('tab-nav');
+                const buttons = nav.querySelectorAll('.tab-button');
+                const contents = document.getElementById('tab-content-container').querySelectorAll('.tab-content');
+
+                nav.addEventListener('click', (e) => {
+                    const button = e.target.closest('.tab-button');
+                    if (!button) return;
+
+                    const tabId = button.dataset.tab;
+
+                    buttons.forEach(btn => {
+                        btn.classList.toggle('active', btn.dataset.tab === tabId);
+                    });
+
+                    contents.forEach(content => {
+                        content.classList.toggle('hidden', content.id !== `tab-${tabId}`);
+                    });
+                    
+                    if (tabId === 'distribucion') {
+                        initDistCharts();
+                    } else if (tabId === 'geoquimica') {
+                        initChemChart('pH');
+                    } else if (tabId === 'descubrimiento') {
+                        initDiscoveryChart();
+                    }
+                });
+            };
+
+            const createChart = (ctx, type, data, options) => {
+                const defaultOptions = {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed.y !== null) {
+                                        label += context.parsed.y;
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: {
+                                callback: function(value, index, values) {
+                                    return wrapLabel(this.getLabelForValue(value));
+                                }
+                            }
+                        }
+                    }
+                };
+                
+                const mergedOptions = { ...defaultOptions, ...options };
+                
+                if (type === 'doughnut') {
+                    delete mergedOptions.scales; 
+                }
+                
+                if (Chart.getChart(ctx)) {
+                    Chart.getChart(ctx).destroy();
+                }
+                return new Chart(ctx, { type, data, options: mergedOptions });
+            };
+
+            const initDistCharts = () => {
+                const donutCtx = document.getElementById('distDonutChart');
+                if (donutCtx && !Chart.getChart(donutCtx)) {
+                    createChart(donutCtx, 'doughnut', chartData.distributionDonut, {
+                        plugins: { legend: { position: 'right' } }
+                    });
+                }
+
+                const barCtx = document.getElementById('distBarChart');
+                if (barCtx && !Chart.getChart(barCtx)) {
+                    createChart(barCtx, 'bar', chartData.distributionBar, {
+                        scales: {
+                            x: { stacked: true },
+                            y: { stacked: true, beginAtZero: true, title: { display: true, text: 'Número de Campos' } }
+                        }
+                    });
+                }
+            };
+
+            const initDiscoveryChart = () => {
+                const ctx = document.getElementById('discoveryChart');
+                if (ctx && !Chart.getChart(ctx)) {
+                    createChart(ctx, 'bar', chartData.discovery, {
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            y: { beginAtZero: true, title: { display: true, text: 'Nuevos Campos Descubiertos' } }
+                        }
+                    });
+                }
+            };
+
+            const initChemChart = (chem) => {
+                const ctx = document.getElementById('chemChart').getContext('2d');
+                const data = chartData.geochemistry[chem];
+                const options = {
+                    scales: {
+                        y: { beginAtZero: true, title: { display: true, text: 'Frecuencia (Conteo)' } },
+                        x: { title: { display: true, text: data.datasets[0].label.split('(')[1].replace(')', '') } }
+                    },
+                    plugins: { legend: { display: false } }
+                };
+
+                if (chemChartInstance) {
+                    chemChartInstance.data = data;
+                    chemChartInstance.options = options;
+                    chemChartInstance.update();
+                } else {
+                    chemChartInstance = createChart(ctx, 'bar', data, options);
+                }
+            };
+
+            document.getElementById('chemFilter').addEventListener('change', (e) => {
+                initChemChart(e.target.value);
+            });
+            
+            initTabNavigation();
+            
+            initDistCharts();
+        });
+    </script>
+</body>
+</html>
